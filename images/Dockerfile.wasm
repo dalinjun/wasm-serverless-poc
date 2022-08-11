@@ -1,0 +1,15 @@
+FROM docker.io/library/rust:1.62
+
+RUN rustup target add wasm32-wasi
+
+COPY echo echo
+
+WORKDIR /echo
+
+RUN cargo build --release --features wasmedge --target wasm32-wasi
+
+FROM scratch
+
+COPY --from=0 /echo/target/wasm32-wasi/release/echo.wasm /echo.wasm
+
+CMD ["/echo.wasm"]

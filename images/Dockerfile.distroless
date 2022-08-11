@@ -1,0 +1,13 @@
+FROM docker.io/library/rust:1.62
+
+COPY echo echo
+
+WORKDIR /echo
+
+RUN cargo build --release --features unix
+
+FROM gcr.io/distroless/cc
+
+COPY --from=0 /echo/target/release/echo /echo
+
+ENTRYPOINT ["/echo"]
