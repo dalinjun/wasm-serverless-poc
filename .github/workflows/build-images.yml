@@ -1,0 +1,34 @@
+name: build container images
+
+on:
+  pull_request:
+    branches:
+    - main
+    types:
+    - opened
+    - reopened
+    - synchronize
+
+permissions:
+  contents: read
+
+jobs:
+  build-images:
+    runs-on: ubuntu-22.04
+    steps:
+    - name: Check out repo
+      uses: actions/checkout@dcd71f646680f2efd8db4afa5ad64fdcba30e748
+
+    - uses: actions/cache@v3
+      with:
+        path: |
+          ~/.cargo/registry
+        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+
+    - name: build Linux image
+      run: buildah build -v $HOME/.cargo/registry:/usr/local/cargo/registry Dockerfile.distroless
+      working-directory: images
+
+    - name: build Webassembly image
+      run: buildah build -v $HOME/.cargo/registry:/usr/local/cargo/registry Dockerfile.wasm
+      working-directory: images
