@@ -8,9 +8,16 @@ on:
     - opened
     - reopened
     - synchronize
+  push:
+    branches:
+    - main
 
 permissions:
   contents: read
+  packages: write
+
+env:
+  REGISTRY: ghcr.io/dalinjun/wasm-serverless-poc
 
 jobs:
   build-images:
@@ -25,10 +32,20 @@ jobs:
           ~/.cargo/registry
         key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
 
+    - if: github.event_name != 'pull_request'
+      name: login to container registry
+      run: buildah login -u ${{ github.actor }} -p ${{ secrets.GITHUB_TOKEN }} ghcr.io
+
     - name: build Linux image
-      run: buildah build -v $HOME/.cargo/registry:/usr/local/cargo/registry Dockerfile.distroless
+      run: buildah build -v $HOME/.cargo/registry:/usr/local/cargo/registry -t "$REGISTRY:distroless-latest" Dockerfile.distroless
       working-directory: images
 
     - name: build Webassembly image
-      run: buildah build -v $HOME/.cargo/registry:/usr/local/cargo/registry Dockerfile.wasm
+      run: buildah build -v $HOME/.cargo/registry:/usr/local/cargo/registry -t "$REGISTRY:wasm-latest" --annotation "module.wasm.image/variant=compat-smart" Dockerfile.wasm
       working-directory: images
+
+    - if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+      name: push latest images
+      run: |
+        buildah push "$REGISTRY:distroless-latest"
+        buildah push "$REGISTRY:wasm-latest"
