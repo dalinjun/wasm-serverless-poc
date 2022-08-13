@@ -8,6 +8,8 @@ RUN cargo build --release --features unix
 
 FROM gcr.io/distroless/cc
 
+LABEL org.opencontainers.image.description "Minimal echo service compiled as Linux binary based on distroless image."
+
 COPY --from=0 /echo/target/release/echo /echo
 
 ENTRYPOINT ["/echo"]

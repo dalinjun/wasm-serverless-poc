@@ -10,6 +10,8 @@ RUN cargo build --release --features wasmedge --target wasm32-wasi
 
 FROM scratch
 
+LABEL org.opencontainers.image.description "Minimal echo service compiled as WebAssembly based on scratch image."
+
 COPY --from=0 /echo/target/wasm32-wasi/release/echo.wasm /echo.wasm
 
 CMD ["/echo.wasm"]
