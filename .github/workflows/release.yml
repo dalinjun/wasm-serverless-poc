@@ -19,6 +19,9 @@ jobs:
     - name: Check out repo
       uses: actions/checkout@dcd71f646680f2efd8db4afa5ad64fdcba30e748
 
+    - name: login to container registry
+      run: buildah login -u ${{ github.actor }} -p ${{ secrets.GITHUB_TOKEN }} ghcr.io
+
     - name: tag release images
       run: |
         buildah pull "$REGISTRY:distroless-$GITHUB_SHA"
