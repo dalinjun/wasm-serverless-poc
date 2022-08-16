@@ -1,0 +1,10 @@
+version: 2
+updates:
+- package-ecosystem: cargo
+  directory: /images/echo
+  schedule:
+    interval: daily
+- package-ecosystem: docker
+  directory: /images
+  schedule:
+    interval: daily
