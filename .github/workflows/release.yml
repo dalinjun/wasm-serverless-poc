@@ -1,0 +1,31 @@
+name: release
+
+on:
+  push:
+    tags:
+    - 'v[0-9]+.[0-9]+.[0-9]+'
+
+permissions:
+  contents: read
+  packages: write
+
+env:
+  REGISTRY: ghcr.io/dalinjun/wasm-serverless-poc
+
+jobs:
+  build-images:
+    runs-on: ubuntu-22.04
+    steps:
+    - name: Check out repo
+      uses: actions/checkout@dcd71f646680f2efd8db4afa5ad64fdcba30e748
+
+    - name: tag release images
+      run: |
+        buildah pull "$REGISTRY:distroless-$GITHUB_SHA"
+        buildah pull "$REGISTRY:wasm-$GITHUB_SHA"
+
+        buildah tag "$REGISTRY:distroless-$GITHUB_SHA" "$REGISTRY:distroless-$GITHUB_REF_NAME"
+        buildah tag "$REGISTRY:wasm-$GITHUB_SHA" "$REGISTRY:wasm-$GITHUB_REF_NAME"
+
+        buildah push "$REGISTRY:distroless-$GITHUB_REF_NAME"
+        buildah push "$REGISTRY:wasm-$GITHUB_REF_NAME"
