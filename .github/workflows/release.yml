@@ -13,7 +13,7 @@ env:
   REGISTRY: ghcr.io/dalinjun/wasm-serverless-poc
 
 jobs:
-  build-images:
+  release:
     runs-on: ubuntu-22.04
     steps:
     - name: Check out repo
