@@ -18,6 +18,19 @@ jobs:
     steps:
     - name: Check out repo
       uses: actions/checkout@dcd71f646680f2efd8db4afa5ad64fdcba30e748
+      with:
+        submodules: true
+
+    - name: build crun with WasmEdge support
+      run: |
+        curl https://raw.githubusercontent.com/WasmEdge/WasmEdge/55dfc3d6f8671ec163addef3137824dae1c301de/utils/install.sh --output install.sh
+        chmod u+x install.sh
+        ./install.sh --path="/usr/local" --version="0.10.1"
+
+        ./autogen.sh
+        ./configure --with-wasmedge
+        make
+      working-directory: crun
 
     - name: login to container registry
       run: buildah login -u ${{ github.actor }} -p ${{ secrets.GITHUB_TOKEN }} ghcr.io
