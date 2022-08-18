@@ -24,7 +24,7 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
     - name: Check out repo
-      uses: actions/checkout@dcd71f646680f2efd8db4afa5ad64fdcba30e748
+      uses: actions/checkout@v2
 
     - uses: actions/cache@v3
       with:
