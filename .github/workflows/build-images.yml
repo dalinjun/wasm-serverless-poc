@@ -32,22 +32,12 @@ jobs:
           ~/.cargo/registry
         key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
 
-    - if: github.event_name != 'pull_request'
-      name: login to container registry
-      run: buildah login -u ${{ github.actor }} -p ${{ secrets.GITHUB_TOKEN }} ghcr.io
-
-    - name: build Linux image
-      run: buildah build -v $HOME/.cargo/registry:/usr/local/cargo/registry -t "$REGISTRY:distroless-latest" -t "$REGISTRY:distroless-$GITHUB_SHA" Dockerfile.distroless
-      working-directory: images
-
-    - name: build Webassembly image
-      run: buildah build -v $HOME/.cargo/registry:/usr/local/cargo/registry -t "$REGISTRY:wasm-latest" -t "$REGISTRY:wasm-$GITHUB_SHA" --annotation "module.wasm.image/variant=compat-smart" Dockerfile.wasm
-      working-directory: images
-
-    - if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
-      name: push latest images
+    - name: login to container registry with oras
       run: |
-        buildah push "$REGISTRY:distroless-latest"
-        buildah push "$REGISTRY:distroless-$GITHUB_SHA"
-        buildah push "$REGISTRY:wasm-latest"
-        buildah push "$REGISTRY:wasm-$GITHUB_SHA"
+        oras login -u ${{ github.actor }} -p ${{ secrets.GITHUB_TOKEN }} ghcr.io
+
+    - name: build and push crun with WasmEdge support
+      run: |
+        buildah build --output=type=local,dest=. .
+        oras push "$REGISTRY:crun-test" ./crun
+      working-directory: crun
