@@ -11,6 +11,8 @@ on:
   push:
     branches:
     - main
+    tags:
+    - 'v[0-9]+.[0-9]+.[0-9]+'
 
 permissions:
   contents: read
@@ -37,17 +39,21 @@ jobs:
       run: buildah login -u ${{ github.actor }} -p ${{ secrets.GITHUB_TOKEN }} ghcr.io
 
     - name: build Linux image
-      run: buildah build -v $HOME/.cargo/registry:/usr/local/cargo/registry -t "$REGISTRY:distroless-latest" -t "$REGISTRY:distroless-$GITHUB_SHA" Dockerfile.distroless
+      run: buildah build -v $HOME/.cargo/registry:/usr/local/cargo/registry -t "$REGISTRY/distroless:latest" Dockerfile.distroless
       working-directory: images
 
     - name: build Webassembly image
-      run: buildah build -v $HOME/.cargo/registry:/usr/local/cargo/registry -t "$REGISTRY:wasm-latest" -t "$REGISTRY:wasm-$GITHUB_SHA" --annotation "module.wasm.image/variant=compat-smart" Dockerfile.wasm
+      run: buildah build -v $HOME/.cargo/registry:/usr/local/cargo/registry -t "$REGISTRY/wasm:latest" --annotation "module.wasm.image/variant=compat-smart" Dockerfile.wasm
       working-directory: images
 
-    - if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    - if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')
       name: push latest images
       run: |
-        buildah push "$REGISTRY:distroless-latest"
-        buildah push "$REGISTRY:distroless-$GITHUB_SHA"
-        buildah push "$REGISTRY:wasm-latest"
-        buildah push "$REGISTRY:wasm-$GITHUB_SHA"
+        buildah push "$REGISTRY/distroless:latest"
+        buildah push "$REGISTRY/wasm:latest"
+
+    - if: startsWith(github.ref, 'refs/tags/v')
+      name: push release images
+      run: |
+        buildah push "$REGISTRY/distroless:$GITHUB_REF_NAME"
+        buildah push "$REGISTRY/wasm:$GITHUB_REF_NAME"
