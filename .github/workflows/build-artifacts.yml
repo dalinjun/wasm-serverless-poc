@@ -1,4 +1,4 @@
-name: build container images
+name: build artifacts
 
 on:
   pull_request:
