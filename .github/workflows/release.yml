@@ -20,7 +20,15 @@ jobs:
       uses: actions/checkout@v2
 
     - name: login to container registry
-      run: buildah login -u ${{ github.actor }} -p ${{ secrets.GITHUB_TOKEN }} ghcr.io
+      run: |
+        buildah login -u ${{ github.actor }} -p ${{ secrets.GITHUB_TOKEN }} ghcr.io
+        oras login -u ${{ github.actor }} -p ${{ secrets.GITHUB_TOKEN }} ghcr.io
+
+    - name: build and push crun with WasmEdge support
+      run: |
+        buildah build --output=type=local,dest=. .
+        oras push "$REGISTRY:crun-$GITHUB_REF_NAME" ./crun
+      working-directory: crun
 
     - name: tag release images
       run: |
