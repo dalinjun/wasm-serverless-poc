@@ -61,7 +61,8 @@ jobs:
 
         buildah push "$REGISTRY/wasm:latest"
 
-        oras push "$REGISTRY/crun:latest" crun/crun
+        oras push "$REGISTRY/crun:latest" ./crun
+      working-directory: crun
 
     - if: startsWith(github.ref, 'refs/tags/v')
       name: push release artifacts
@@ -72,4 +73,5 @@ jobs:
         buildah tag "$REGISTRY/wasm:latest" "$REGISTRY/wasm:$GITHUB_REF_NAME"
         buildah push "$REGISTRY/wasm:$GITHUB_REF_NAME"
 
-        oras push "$REGISTRY/crun:$GITHUB_REF_NAME" crun/crun
+        oras push "$REGISTRY/crun:$GITHUB_REF_NAME" ./crun
+      working-directory: crun
