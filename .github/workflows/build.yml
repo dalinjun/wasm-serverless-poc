@@ -1,0 +1,124 @@
+name: build
+
+on:
+  pull_request:
+    branches:
+    - main
+    types:
+    - opened
+    - reopened
+    - synchronize
+  push:
+    branches:
+    - main
+    tags:
+    - 'v[0-9]+.[0-9]+.[0-9]+'
+
+permissions:
+  contents: read
+  packages: write
+  pull-requests: write
+
+env:
+  REGISTRY: ghcr.io/dalinjun/wasm-serverless-poc
+
+jobs:
+  build-artifacts:
+    runs-on: ubuntu-22.04
+    steps:
+    - name: Check out repo
+      uses: actions/checkout@v2
+
+    - uses: actions/cache@v3
+      with:
+        path: |
+          ~/.cargo/registry
+        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+
+    # Oras 0.13 has a bug which prevents multiple tags on same artifact: https://github.com/oras-project/oras/issues/447
+    - name: upgrade Oras if not at least version 0.14
+      run: |
+        if oras version | grep -q 0.13; then
+          curl -L https://github.com/oras-project/oras/releases/download/v0.14.0/oras_0.14.0_linux_amd64.tar.gz --output oras_0.14.0_linux_amd64.tar.gz
+
+          if echo '50d0b220094734842fede0637fb63e35034281c68af4e3a88a94e9bdb0ac2f51  oras_0.14.0_linux_amd64.tar.gz' | shasum -c; then
+            tar xvf oras_0.14.0_linux_amd64.tar.gz
+            sudo mv oras /usr/local/bin/oras
+          fi
+        fi
+
+        oras version
+
+    - name: login to container registry
+      run: |
+        buildah login -u ${{ github.actor }} -p ${{ secrets.GITHUB_TOKEN }} ghcr.io
+        oras login -u ${{ github.actor }} -p ${{ secrets.GITHUB_TOKEN }} ghcr.io
+
+    - name: build crun binary
+      env:
+        DOCKER_BUILDKIT: 1
+      run: docker build --output=type=local,dest=. .
+      working-directory: crun
+
+    - name: build Linux image
+      run: buildah build -v $HOME/.cargo/registry:/usr/local/cargo/registry -t "$REGISTRY/distroless:commit-$GITHUB_SHA" Dockerfile.distroless
+      working-directory: images
+
+    - name: build Webassembly image
+      run: buildah build -v $HOME/.cargo/registry:/usr/local/cargo/registry -t "$REGISTRY/wasm:commit-$GITHUB_SHA" --annotation "module.wasm.image/variant=compat-smart" Dockerfile.wasm
+      working-directory: images
+
+    - name: push latest artifacts
+      run: |
+        buildah tag "$REGISTRY/distroless:commit-$GITHUB_SHA" "$REGISTRY/distroless:latest"
+        buildah push "$REGISTRY/distroless:commit-$GITHUB_SHA"
+        buildah push "$REGISTRY/distroless:latest"
+
+        buildah tag "$REGISTRY/wasm:commit-$GITHUB_SHA" "$REGISTRY/wasm:latest"
+        buildah push "$REGISTRY/wasm:commit-$GITHUB_SHA"
+        buildah push "$REGISTRY/wasm:latest"
+
+        oras push "$REGISTRY/crun:commit-$GITHUB_SHA" ./crun
+        oras push "$REGISTRY/crun:latest" ./crun
+      working-directory: crun
+
+    - if: startsWith(github.ref, 'refs/tags/v')
+      name: push release artifacts
+      run: |
+        buildah tag "$REGISTRY/distroless:commit-$GITHUB_SHA" "$REGISTRY/distroless:$GITHUB_REF_NAME"
+        buildah push "$REGISTRY/distroless:$GITHUB_REF_NAME"
+
+        buildah tag "$REGISTRY/wasm:commit-$GITHUB_SHA" "$REGISTRY/wasm:$GITHUB_REF_NAME"
+        buildah push "$REGISTRY/wasm:$GITHUB_REF_NAME"
+
+        oras push "$REGISTRY/crun:$GITHUB_REF_NAME" ./crun
+      working-directory: crun
+  benchmark:
+    runs-on: ubuntu-22.04
+    needs: build-artifacts
+    steps:
+    - name: check out repo
+      uses: actions/checkout@v2
+
+    - name: setup Microk8s with modified crun and deploy echo service
+      run: |
+        sudo REGISTRY="${{ env.REGISTRY }}" TAG="commit-$GITHUB_SHA" ./setup-cluster
+      working-directory: microk8s
+
+    - name: benchmark echo service startup times
+      id: bench
+      run: |
+        sudo ./benchmark
+      working-directory: microk8s
+
+    - if: github.event_name == 'pull_request'
+      name: post results to PR
+      uses: actions/github-script@v6
+      with:
+        script: |
+          github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: '${{ steps.bench.outputs.results }}'
+            })
