@@ -1,0 +1,17 @@
+---
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: echo-wasm
+  namespace: echo
+spec:
+  template:
+    metadata:
+      annotations:
+        autoscaling.knative.dev/max-scale: "1"
+        autoscaling.knative.dev/target: "1"
+        autoscaling.knative.dev/window: "10s"
+        module.wasm.image/variant: compat-smart
+    spec:
+      containers:
+        - image: wasm-image

@@ -1,0 +1,78 @@
+#!/usr/bin/env python3
+
+import datetime
+import json
+import requests
+import subprocess
+import time
+import uuid
+
+ip = subprocess.run(["microk8s", "kubectl", "get", "service", "kourier", "-n", "kourier-system", "-o",
+                    "jsonpath='{.status.loadBalancer.ingress[0].ip}'"], capture_output=True, check=True).stdout.decode('UTF-8').strip("'")
+
+
+class Result:
+    def __init__(self, error: str = "", status_code: int = 0, success: bool = False, value: datetime.timedelta = datetime.timedelta()):
+        self.error = error
+        self.status_code = status_code
+        self.success = success
+        self.value = value
+
+    error: str
+    status_code: int
+    success: bool
+    value: datetime.timedelta
+
+
+def bench_url(host: str):
+    results = []
+    for y in range(3):
+        print("sleep until service is scaled down")
+        time.sleep(30)
+
+        loop_results = []
+        for x in range(3):
+            payload = str(uuid.uuid4())
+            response = requests.post(
+                f'http://{ip}', data=payload, headers={'host': host})
+
+            if response.status_code != 200 or response.text != payload:
+                loop_results.append(
+                    Result(status_code=response.status_code, success=False, error=response.text))
+                print("call failed")
+            else:
+                print(f'call took {response.elapsed}')
+                loop_results.append(
+                    Result(status_code=response.status_code, success=True, value=response.elapsed))
+
+            time.sleep(1)
+
+        results.append(loop_results)
+    return results
+
+
+result_file = []
+
+result_file.append("|Name|Pass|Status|Result|")
+result_file.append("|-|-|-|-|")
+for x, loop_result in enumerate(bench_url("echo-distroless.echo.example.com")):
+    for y, result in enumerate(loop_result):
+        if result.success:
+            result_file.append(
+                f'|Distroless run-{x+1}-{y+1}|true|{result.status_code}|{result.value}|')
+        else:
+            result_file.append(
+                f'|Distroless run-{x+1}-{y+1}|false|{result.status_code}|{result.error}|')
+
+for x, loop_result in enumerate(bench_url("echo-wasm.echo.example.com")):
+    for y, result in enumerate(loop_result):
+        if result.success:
+            result_file.append(
+                f'|WebAssembly run-{x+1}-{y+1}|true|{result.status_code}|{result.value}|')
+        else:
+            result_file.append(
+                f'|WebAssembly run-{x+1}-{y+1}|false|{result.status_code}|{result.error}|')
+
+output = "\\n".join(result_file).replace('"', '\"')
+
+print(f'::set-output name=results::{output}')

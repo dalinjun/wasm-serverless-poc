@@ -1,0 +1,42 @@
+#!/usr/bin/env bash
+
+set -ex
+
+WORKING_DIR="$PWD"
+
+# install required packages
+apt update
+apt install libyajl2
+
+# install Microk8s
+snap install microk8s --classic --channel=1.24/stable
+microk8s stop
+
+# configure modified crun
+oras pull "$REGISTRY/crun:$TAG"
+chmod a+x crun
+mv crun /usr/local/bin/crun
+bash -c "cd /var/snap/microk8s/current/args && git apply $WORKING_DIR/containerd-template.toml.patch"
+
+# install WasmEdge
+curl -L https://raw.githubusercontent.com/WasmEdge/WasmEdge/55dfc3d6f8671ec163addef3137824dae1c301de/utils/install.sh --output wasmedge_install.sh
+chmod u+x wasmedge_install.sh && ./wasmedge_install.sh --path="/usr/local" --version="0.10.1"
+
+# configure Microk8s
+HOST_IP=$(ip a | grep inet | grep eth0 | cut -f 6 -d ' ' | cut -f 1 -d '/')
+microk8s start
+microk8s enable dns hostpath-storage "metallb:$HOST_IP-$HOST_IP"
+microk8s kubectl wait --for=condition=available --timeout=10m --all --all-namespaces deployments
+
+# configure Knative
+microk8s kubectl apply -f https://github.com/knative/serving/releases/download/knative-v1.6.0/serving-crds.yaml
+microk8s kubectl apply -f https://github.com/knative/serving/releases/download/knative-v1.6.0/serving-core.yaml
+microk8s kubectl apply -f https://github.com/knative/net-kourier/releases/download/knative-v1.6.0/kourier.yaml
+microk8s kubectl patch configmap/config-network --namespace knative-serving --type merge --patch '{"data":{"ingress-class":"kourier.ingress.networking.knative.dev"}}'
+microk8s kubectl apply -f knative.yml
+microk8s kubectl wait --for=condition=available --timeout=10m --all --all-namespaces deployments
+
+# deploy echo service
+echo -e "images:\n- name: distroless-image\n  newName: $REGISTRY/distroless\n  newTag: $TAG\n- name: wasm-image\n  newName: $REGISTRY/wasm\n  newTag: $TAG" >> kustomization.yaml
+microk8s kubectl apply -k .
+microk8s kubectl wait --for=condition=available --timeout=10m --all --all-namespaces deployments
