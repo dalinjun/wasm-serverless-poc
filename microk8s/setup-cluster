@@ -9,7 +9,7 @@ apt update
 apt install libyajl2
 
 # install Microk8s
-snap install microk8s --classic --channel=1.24/stable
+snap install microk8s --classic --channel=1.25/stable
 microk8s stop
 
 # configure modified crun
