@@ -29,9 +29,9 @@ microk8s enable dns hostpath-storage "metallb:$HOST_IP-$HOST_IP"
 microk8s kubectl wait --for=condition=available --timeout=10m --all --all-namespaces deployments
 
 # configure Knative
-microk8s kubectl apply -f https://github.com/knative/serving/releases/download/knative-v1.6.0/serving-crds.yaml
-microk8s kubectl apply -f https://github.com/knative/serving/releases/download/knative-v1.6.0/serving-core.yaml
-microk8s kubectl apply -f https://github.com/knative/net-kourier/releases/download/knative-v1.6.0/kourier.yaml
+microk8s kubectl apply -f https://github.com/knative/serving/releases/download/knative-v1.7.1/serving-crds.yaml
+microk8s kubectl apply -f https://github.com/knative/serving/releases/download/knative-v1.7.1/serving-core.yaml
+microk8s kubectl apply -f https://github.com/knative/net-kourier/releases/download/knative-v1.7.0/kourier.yaml
 microk8s kubectl patch configmap/config-network --namespace knative-serving --type merge --patch '{"data":{"ingress-class":"kourier.ingress.networking.knative.dev"}}'
 microk8s kubectl apply -f knative.yml
 microk8s kubectl wait --for=condition=available --timeout=10m --all --all-namespaces deployments
