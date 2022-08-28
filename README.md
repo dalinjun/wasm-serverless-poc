@@ -1,2 +1,3 @@
 # wasm-serverless-poc
-Running WebAssembly + WASI workloads in Kubernetes.
+
+Running scale to zero WebAssembly + WASI workloads using WasmEdge library in MicroK8s cluster with knative.
