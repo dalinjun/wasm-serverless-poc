@@ -14,3 +14,6 @@ spec:
     spec:
       containers:
         - image: distroless-image
+          readinessProbe:
+            httpGet:
+              path: /healthz
