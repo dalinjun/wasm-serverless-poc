@@ -150,9 +150,9 @@ checksum = "c4f5b37a154999a8f3f98cc23a628d850e154479cd94decf3414696e12e31aaf"
 
 [[package]]
 name = "wasmedge_wasi_socket"
-version = "0.4.1"
+version = "0.4.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b937b390ec12cd99553d35ee61c1cbaee54b29f4acf9ba7b1c7378805c47268f"
+checksum = "2fc4e93009d7e2c2e3d29b65d1f56ef606466673e85fe417808beca50cb608bf"
 dependencies = [
  "libc",
 ]
