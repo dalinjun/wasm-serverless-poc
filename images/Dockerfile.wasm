@@ -1,4 +1,4 @@
-FROM docker.io/library/rust:1.64.0
+FROM docker.io/library/rust:1.65.0
 
 RUN rustup target add wasm32-wasi
 
