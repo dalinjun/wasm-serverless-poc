@@ -16,4 +16,4 @@ labels: bug
   2.
   3.
 
-## Specifications
+## More information
