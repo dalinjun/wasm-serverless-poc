@@ -16,4 +16,3 @@ I want to **THING**
 
 ***
 
-Elaboration
